@@ -10,7 +10,7 @@ typedef enum {
 } JOY_AXES;
 
 typedef enum {
-  JOY_BUTTON_MANUALBOOST = 0,  // A button on Xbox
+  JOY_BUTTON_A = 0,  // A button on Xbox
 } JOY_BUTTON;
 
 #define UPDATE_TS 0.05
@@ -27,21 +27,31 @@ private:
   ros::Subscriber joy_sub;
   ros::Publisher twist_pub;
   geometry_msgs::Twist cmd_vel,p_cmd_vel;
+  bool last_A;
+  bool intake;
 };
 
 TennisButler::TennisButler() {
   timer = nh.createTimer(ros::Duration(UPDATE_TS), &TennisButler::timerCallback, this);
   joy_sub = nh.subscribe("joy", 10, &TennisButler::JoyConCallback, this);
   twist_pub = nh.advertise<geometry_msgs::Twist>("alphabot/cmd_vel", 10);
+  last_A = false;
+  intake = false;
 }
 
 TennisButler::~TennisButler(){
 }
 
 void TennisButler::JoyConCallback(const sensor_msgs::Joy &joy_msg) {
+  if (joy_msg.buttons[JOY_BUTTON_A] && !last_A) {
+    intake = !intake;
+  }
+  last_A = joy_msg.buttons[JOY_BUTTON_A];
+
   // int boost = (joy_msg.buttons[JOY_BUTTON_MANUALBOOST] == 1) ? 4 : 1;
   cmd_vel.linear.x = joy_msg.axes[JOY_AXES_MANUAL_VERTICAL]; // * 0.25 * boost;
   cmd_vel.angular.z = joy_msg.axes[JOY_AXES_MANUAL_HORIZONTAL]; // * 0.5 * boost;
+  cmd_vel.angular.y = intake;
   return;
 }
 
