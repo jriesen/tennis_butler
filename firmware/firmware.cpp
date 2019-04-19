@@ -6,29 +6,30 @@
 #include <geometry_msgs/Twist.h>
 
 // Minimum number of PCM pulses required for driving
-#define L_PULSE_START 130 // Minimum number of PCM pulses required for driving
-#define R_PULSE_START 130 // Minimum number of PCM pulses required for driving
+#define L_PULSE_START 0 // Minimum number of PCM pulses required for driving
+#define R_PULSE_START 0 // Minimum number of PCM pulses required for driving
 #define PULSE_1MPS 120 // PCUL pulse number required for 1.0 m/s
+#define PULSE_MAX 64
 
 // Left motor pins
 // const int EncoderAL = 2;
 // const int EncoderBL = 3;
-const int ENL = 22;
-const int ENBL = 23;
-const int PWM2L = 11; // Timer1
-const int PWM1L = 12; // Timer1
-const int OCML = A0;
-const int DIAGL = 24;
+const int INA_L = 23;
+const int INB_L = 22;
+const int DIAGA_L = 24;
+const int DIAGB_L = 25;
+const int PWM_L = 2; // Timer1
+const int CS_L = A0;
 
 // Right motor pins
 // const int EncoderAR = 19;
 // const int EncoderBR = 18;
-const int ENR = 25;
-const int ENBR = 26;
-const int PWM2R = 2; // Timer3
-const int PWM1R = 3; // Timer3
-const int OCMR = A1;
-const int DIAGR = 27;
+const int INA_R = 52;
+const int INB_R = 53;
+const int DIAGA_R = 51;
+const int DIAGB_R = 50;
+const int PWM_R = 3; // Timer1
+const int CS_R = A1;
 
 ros::NodeHandle nh;
 
@@ -78,10 +79,10 @@ void MotorCmdCallback(const geometry_msgs::Twist& msg) {
   }
 
   // Clamp values
-  if (l_motor > 255)  l_motor = 255;
-  if (l_motor < -255) l_motor = -255;
-  if (r_motor > 255)  r_motor = 255;
-  if (r_motor < -255) r_motor = -255;
+  if (l_motor > PULSE_MAX)  l_motor = PULSE_MAX;
+  if (l_motor < -PULSE_MAX) l_motor = -PULSE_MAX;
+  if (r_motor > PULSE_MAX)  r_motor = PULSE_MAX;
+  if (r_motor < -PULSE_MAX) r_motor = -PULSE_MAX;
 
   return;
 }
@@ -89,11 +90,7 @@ void MotorCmdCallback(const geometry_msgs::Twist& msg) {
 int16_t last_left = 0, last_right = 0;
 
 bool MotorRun(int16_t left, int16_t right) {
-  // Disengage braking
-  digitalWrite(ENBR, false);
-  digitalWrite(ENBL, false);
-
-  if (right > 255 || right < -255 || left > 255 || left < -255) {
+  if (right > PULSE_MAX || right < -PULSE_MAX || left > PULSE_MAX || left < -PULSE_MAX) {
     nh.logwarn("Motor speed out-of-range!");
     return false;
   }
@@ -106,64 +103,57 @@ bool MotorRun(int16_t left, int16_t right) {
   }
 
   if (left > 0) {
-    // Forward on left motor
+    // Forward on left motor (clockwise)
     // nh.loginfo("Forward on left motor.");
-    digitalWrite(ENL, true);
-    digitalWrite(ENBL, false);
-    analogWrite(PWM1L, left);
-    analogWrite(PWM2L, 0);
+    digitalWrite(INA_L, true);
+    digitalWrite(INB_L, false);
+    analogWrite(PWM_L, left);
   }
   else if (left < 0) {
-    // Reverse left motor direction
+    // Reverse left motor direction (counter-clockwise)
     // nh.loginfo("Reverse on left motor.");
-    digitalWrite(ENL, true);
-    digitalWrite(ENBL, false);
-    analogWrite(PWM1L, 0);
-    analogWrite(PWM2L, -left);
+    digitalWrite(INA_L, false);
+    digitalWrite(INB_L, true);
+    analogWrite(PWM_L, -left);
   }
   else {
     // nh.loginfo("Brake left motor.");
-    digitalWrite(ENL, true);
-    digitalWrite(ENBL, false);
-    analogWrite(PWM1L, 0);
-    analogWrite(PWM2L, 0);
+    digitalWrite(INA_L, false);
+    digitalWrite(INB_L, false);
+    analogWrite(PWM_L, 0);
   }
 
   if (right > 0) {
+    // Forward on right motor (clockwise)
     // nh.loginfo("Forward on right motor.");
-    digitalWrite(ENR, true);
-    digitalWrite(ENBR, false);
-    analogWrite(PWM1R, right);
-    analogWrite(PWM2R, 0);
+    digitalWrite(INA_R, true);
+    digitalWrite(INB_R, false);
+    analogWrite(PWM_R, right);
   }
   else if (right < 0) {
-    // Reverse right motor direction
+    // Reverse right motor direction (counter-clockwise)
     // nh.loginfo("Reverse on right motor.");
-    digitalWrite(ENR, true);
-    digitalWrite(ENBR, false);
-    analogWrite(PWM1R, 0);
-    analogWrite(PWM2R, -right);
+    digitalWrite(INA_R, false);
+    digitalWrite(INB_R, true);
+    analogWrite(PWM_R, -right);
   }
   else {
     // nh.loginfo("Brake right motor.");
-    digitalWrite(ENR, true);
-    digitalWrite(ENBR, false);
-    analogWrite(PWM1R, 0);
-    analogWrite(PWM2R, 0);
+    digitalWrite(INA_R, false);
+    digitalWrite(INB_R, false);
+    analogWrite(PWM_R, 0);
   }
 
   return true;
 }
 
 bool MotorBrake(void) {
-  digitalWrite(ENL, true);
-  digitalWrite(ENBL, false);
-  digitalWrite(ENR, true);
-  digitalWrite(ENBR, false);
-  analogWrite(PWM1L, 0);
-  analogWrite(PWM2L, 0);
-  analogWrite(PWM1R, 0);
-  analogWrite(PWM2R, 0);
+  digitalWrite(INA_L, false);
+  digitalWrite(INB_L, false);
+  digitalWrite(INA_R, false);
+  digitalWrite(INB_R, false);
+  analogWrite(PWM_L, 0);
+  analogWrite(PWM_R, 0);
 }
 
 ros::Subscriber <geometry_msgs::Twist> sub_cmdvel("alphabot/cmd_vel", MotorCmdCallback);
@@ -172,19 +162,26 @@ void setup(void) {
   nh.initNode();
   nh.subscribe(sub_cmdvel);
 
-  pinMode(ENL, OUTPUT);
-  pinMode(ENBL, OUTPUT);
-  // pinMode(PWM1L, OUTPUT);
-  // pinMode(PWM2L, OUTPUT);
-  pinMode(OCML, INPUT);
-  pinMode(DIAGL, INPUT_PULLUP);
+  const int INA_L = 22;
+  const int INB_L = 23;
+  const int DIAGA_L = 24;
+  const int DIAGB_L = 25;
+  const int PWM_L = 2; // Timer1
+  const int CS_L = A0;
 
-  pinMode(ENR, OUTPUT);
-  pinMode(ENBR, OUTPUT);
-  // pinMode(PWM1R, OUTPUT);
-  // pinMode(PWM2R, OUTPUT);
-  pinMode(OCMR, INPUT);
-  pinMode(DIAGR, INPUT_PULLUP);
+  pinMode(INA_L, OUTPUT);
+  pinMode(INB_L, OUTPUT);
+  pinMode(DIAGA_L, INPUT);
+  pinMode(DIAGB_L, INPUT);
+  pinMode(PWM_L, OUTPUT);
+  pinMode(CS_L, INPUT);
+
+  pinMode(INA_R, OUTPUT);
+  pinMode(INB_R, OUTPUT);
+  pinMode(DIAGA_R, INPUT);
+  pinMode(DIAGB_R, INPUT);
+  pinMode(PWM_R, OUTPUT);
+  pinMode(CS_R, INPUT);
 }
 
 void loop(void) {
