@@ -2,14 +2,21 @@
 
 // ATmega2560 Firmware for the Tennis Butler Prototype 1
 
+// Pushbutton Support
+//#include <Button.h>
+//#include <ButtonEventCallback.h>
+//#include <PushButton.h>
+//#include <Bounce2.h>
+
+// ROS
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 
 // Minimum number of PCM pulses required for driving
 #define L_PULSE_START 0 // Minimum number of PCM pulses required for driving
 #define R_PULSE_START 0 // Minimum number of PCM pulses required for driving
-#define PULSE_1MPS 100 // PCUL pulse number required for 1.0 m/s
-#define PULSE_MAX 128
+#define PULSE_1MPS 50 // PCUL pulse number required for 1.0 m/s
+#define PULSE_MAX 64 
 
 const int INTAKE_PWM = 128;
 
@@ -42,6 +49,13 @@ const int PWM_I = 5; // Timer3
 const int CS_I = A2;
 
 
+const int BUTTON_POWER = 9;
+const int BUTTON = 10;
+const int RED = 11;
+const int GREEN = 12;
+const int BLUE = 13;
+
+
 ros::NodeHandle nh;
 
 char buffer[128];
@@ -72,12 +86,12 @@ void MotorCmdCallback(const geometry_msgs::Twist& msg) {
     if (msg.linear.x == 0.0) {
       l_motor = (int) (-1 * L_PULSE_START - PULSE_1MPS * msg.angular.z);
       r_motor = (int) (R_PULSE_START + PULSE_1MPS * msg.angular.z);
-    } else if (msg.linear.x> 0.0) {
+    } else if (msg.linear.x > 0.0) {
       r_motor += PULSE_1MPS * msg.angular.z;
       l_motor -= PULSE_1MPS * msg.angular.z * 0.5;
     } else {
-      r_motor -= PULSE_1MPS * msg.angular.z;
-      l_motor += PULSE_1MPS * msg.angular.z * 0.5;
+      r_motor += PULSE_1MPS * msg.angular.z * -1;
+      l_motor -= PULSE_1MPS * msg.angular.z * 0.5 * -1;
     }
   } else if (msg.angular.z < 0.0) {
     if (msg.linear.x == 0.0) {
@@ -214,6 +228,12 @@ void setup(void) {
   pinMode(DIAGB_I, INPUT);
   pinMode(PWM_I, OUTPUT);
   pinMode(CS_I, INPUT);
+
+  pinMode(BUTTON_POWER, INPUT_PULLUP);
+  pinMode(BUTTON, INPUT);
+  pinMode(RED, OUTPUT);
+  pinMode(GREEN, OUTPUT);
+  pinMode(BLUE, OUTPUT);
 }
 
 void loop(void) {
@@ -226,6 +246,9 @@ void loop(void) {
     // We have lost contact, apply brakes.
     MotorBrake();
   }
+
+
+
   nh.spinOnce();
   delay(10);
 }
