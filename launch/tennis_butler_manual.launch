@@ -3,12 +3,17 @@
   <!-- Start joycon -->
   <node pkg="joy" name="joycon" type="joy_node">
     <param name="deadzone" type="double" value="0.18" />
+    <param name="coalesce_interval" type="double" value="0.001" />
+    <param name="autorepeat_rate" type="double" value="5.0" />
   </node>
 
   <!-- Start tennis_butler node -->
   <node pkg="tennis_butler" name="TennisButler" type="tennis_butler_node" output="screen"/>
 
   <!-- Set to your serial port of Arduino -->
+  <!--
+  <arg name="serial_port" default="/dev/ttyS0"/>
+  -->
   <arg name="serial_port" default="/dev/ttyACM0"/>
   <arg name="baud_rate" default="57600"/>
 
